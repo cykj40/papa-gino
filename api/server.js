@@ -29,10 +29,10 @@ server.register(fastifyCors, {
     origin: "http://localhost:5173",
 });
 
-server.get("/pizzas", async (request, reply) => {
-    const pizzas = await db.all("SELECT * FROM pizzas");
-    return pizzas;
-});
+// server.get("/pizzas", async (request, reply) => {
+//     const pizzas = await db.all("SELECT * FROM pizzas");
+//     return pizzas;
+// });
 
 server.get("/api/pizzas", async function getPizzas(req, res) {
     const pizzasPromise = db.all(
