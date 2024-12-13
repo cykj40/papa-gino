@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { AsyncDatabase } from "promised-sqlite3";
 import fastifyCors from "@fastify/cors";
+import fs from 'fs/promises';
 
 const server = fastify({
     logger: {
@@ -35,40 +36,29 @@ server.register(fastifyCors, {
 // });
 
 server.get("/api/pizzas", async function getPizzas(req, res) {
-    const pizzasPromise = db.all(
-        "SELECT pizza_type_id, name, category, ingredients as description FROM pizza_types"
-    );
-    const pizzaSizesPromise = db.all(
-        `SELECT 
-      pizza_type_id as id, size, price
-    FROM 
-      pizzas
-  `
-    );
+    try {
+        const pizzaFiles = await fs.readdir(path.join(__dirname, 'public', 'pizzas'));
+        const pizzaTypes = pizzaFiles
+            .filter(file => file.endsWith('.webp'))
+            .map(file => {
+                const name = file.replace('.webp', '');
+                return {
+                    id: name,
+                    name: name.charAt(0).toUpperCase() + name.slice(1),
+                    image: `/public/pizzas/${file}`,
+                    sizes: {
+                        "S": 9.99,
+                        "M": 12.99,
+                        "L": 15.99
+                    }
+                };
+            });
 
-    const [pizzas, pizzaSizes] = await Promise.all([
-        pizzasPromise,
-        pizzaSizesPromise,
-    ]);
-
-    const responsePizzas = pizzas.map((pizza) => {
-        const sizes = pizzaSizes.reduce((acc, current) => {
-            if (current.id === pizza.pizza_type_id) {
-                acc[current.size] = +current.price;
-            }
-            return acc;
-        }, {});
-        return {
-            id: pizza.pizza_type_id,
-            name: pizza.name,
-            category: pizza.category,
-            description: pizza.description,
-            image: `/public/pizzas/${pizza.pizza_type_id}.webp`,
-            sizes,
-        };
-    });
-
-    res.send(responsePizzas);
+        res.send(pizzaTypes);
+    } catch (error) {
+        req.log.error(error);
+        res.status(500).send({ error: "Failed to fetch pizzas" });
+    }
 });
 
 server.get("/api/pizza-of-the-day", async function getPizzaOfTheDay(req, res) {
